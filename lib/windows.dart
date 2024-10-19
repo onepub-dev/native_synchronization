@@ -50,32 +50,32 @@ class _WindowsMutex extends Mutex {
 
   @override
   void _lock({Duration? timeout}) {
-    _log('taking lock ${_impl.address}');
+    log(() => 'taking lock ${_impl.address}');
 
     if (timeout != null) {
       if (!TryAcquireSRWLockExclusive(_impl)) {
-        _log('Failed to acquire lock, will wait ${_impl.address}');
+        log(() => 'Failed to acquire lock, will wait ${_impl.address}');
 
         // Didn't get the lock immediately, so wait on the condition variable
         _conditionVariable.wait(this, timeout: timeout);
-        _log('wait returned ${_impl.address}');
+        log(() => 'wait returned ${_impl.address}');
       }
     } else {
       AcquireSRWLockExclusive(_impl);
     }
-    _log('lock acquired ${_impl.address}');
+    log(() => 'lock acquired ${_impl.address}');
   }
 
   @override
   void _unlock() {
-    _log('releasing lock  ${_impl.address}');
+    log(() => 'releasing lock  ${_impl.address}');
 
     // Signal the condition variable to wake up any waiting threads
     _conditionVariable.notify();
 
     // Release the SRW lock
     ReleaseSRWLockExclusive(_impl);
-    _log('lock released ${_impl.address}');
+    log(() => 'lock released ${_impl.address}');
   }
 
   @override
@@ -119,7 +119,7 @@ class _WindowsConditionVariable extends ConditionVariable {
 
   @override
   void notify() {
-    _log('Notifying condition variable ${_impl.address}');
+    log(() => 'Notifying condition variable ${_impl.address}');
     WakeConditionVariable(_impl);
   }
 
@@ -128,7 +128,7 @@ class _WindowsConditionVariable extends ConditionVariable {
   void wait(covariant _WindowsMutex mutex, {Duration? timeout}) {
     const infinite = 0xFFFFFFFF;
     const exclusive = 0;
-    _log('waiting for lock with timeout: $timeout  ${_impl.address}');
+    log(() => 'waiting for lock with timeout: $timeout  ${_impl.address}');
 
     var result = 0;
     final timeoutMs = timeout?.inMilliseconds ?? infinite;
@@ -136,11 +136,11 @@ class _WindowsConditionVariable extends ConditionVariable {
     result =
         SleepConditionVariableSRW(_impl, mutex._impl, timeoutMs, exclusive);
 
-    _log('wait returned with result: $result  ${_impl.address}');
+    log(() => 'wait returned with result: $result  ${_impl.address}');
     if (result == 0) {
       final error = GetLastError();
       if (error == ERROR_TIMEOUT) {
-        _log('throwing timeout from wait ${_impl.address}');
+        log(() => 'throwing timeout from wait ${_impl.address}');
         throw TimeoutException('Timeout waiting for condition variable');
       } else {
         throw StateError(
@@ -161,9 +161,4 @@ class _SendableWindowsConditionVariable implements Sendable<ConditionVariable> {
   @override
   ConditionVariable materialize() =>
       _WindowsConditionVariable.fromAddress(conditionVariableAddress);
-}
-
-void _log(dynamic args) {
-  // This could be replaced with a proper logging mechanism for production
-  print('${DateTime.now()} $args');
 }

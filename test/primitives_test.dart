@@ -29,30 +29,29 @@ void main() {
     /// Returns success
     ///
     Future<String> spawnHelperIsolate(
-        int ptrAddress, Sendable<Mutex> sendableMutex) {
-      // ignore: discarded_futures
-      return Isolate.run(() {
-        final ptr = Pointer<Uint8>.fromAddress(ptrAddress);
-        final mutex = sendableMutex.materialize();
+            int ptrAddress, Sendable<Mutex> sendableMutex) =>
+        // ignore: discarded_futures
+        Isolate.run(() {
+          final ptr = Pointer<Uint8>.fromAddress(ptrAddress);
+          final mutex = sendableMutex.materialize();
 
-        while (true) {
-          sleep(const Duration(milliseconds: 10));
-          if (mutex.runLocked(() {
-            if (ptr.value == 2) {
-              return true;
+          while (true) {
+            sleep(const Duration(milliseconds: 10));
+            if (mutex.runLocked(() {
+              if (ptr.value == 2) {
+                return true;
+              }
+              ptr.value = 0;
+              sleep(const Duration(milliseconds: 500));
+              ptr.value = 1;
+              return false;
+            })) {
+              break;
             }
-            ptr.value = 0;
-            sleep(const Duration(milliseconds: 500));
-            ptr.value = 1;
-            return false;
-          })) {
-            break;
           }
-        }
 
-        return 'success';
-      });
-    }
+          return 'success';
+        });
 
     test('isolate', () async {
       await using((arena) async {

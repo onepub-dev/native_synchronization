@@ -25,6 +25,7 @@ import 'package:ffi/ffi.dart';
 import 'sendable.dart';
 import 'src/bindings/pthread.dart';
 import 'src/bindings/winapi.dart';
+import 'src/logger.dart';
 import 'src/macos.dart';
 
 part 'posix.dart';
