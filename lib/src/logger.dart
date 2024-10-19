@@ -1,6 +1,6 @@
 import 'dart:developer' as developer;
 
-bool _isLoggingEnabled = true; // Toggle this to enable/disable logging
+bool _isLoggingEnabled = false; // Toggle this to enable/disable logging
 
 /// The logger callback function.
 /// It takes a closure [messageCallback] that
