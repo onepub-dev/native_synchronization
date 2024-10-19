@@ -1,3 +1,7 @@
+# 0.7.1
+- reduced logging.
+- updated the random log functions to use the dev logging package.
+
 # 0.7.0
 - added windodws support to take with a timeout.
 - fixed macos support for take with a timeout.
