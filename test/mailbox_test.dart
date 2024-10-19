@@ -41,9 +41,8 @@ void main() {
     expect(await helperResult, equals('success'));
   });
 
-  Future<String> startHelperIsolateClose(Sendable<Mailbox> sendableMailbox)
+  Future<String> startHelperIsolateClose(Sendable<Mailbox> sendableMailbox) =>
       // ignore: discarded_futures
-      =>
       Isolate.run(() {
         sleep(const Duration(milliseconds: 500));
         final mailbox = sendableMailbox.materialize();

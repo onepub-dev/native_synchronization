@@ -47,7 +47,13 @@ class _PosixMutex extends Mutex {
 
   void _timedLock(Duration timeout) {
     final timespec = _allocateTimespec(timeout);
-    final result = pthread_mutex_timedlock(_impl, timespec);
+
+    var result = 0;
+    if (Platform.isMacOS) {
+      result = macos_pthread_mutex_timedlock(_impl, timespec);
+    } else {
+      result = pthread_mutex_timedlock(_impl, timespec);
+    }
     malloc.free(timespec);
 
     if (result == ETIMEDOUT) {
