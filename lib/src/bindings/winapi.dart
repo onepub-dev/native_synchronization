@@ -8,7 +8,22 @@ import 'dart:ffi';
 
 final class SRWLOCK extends Opaque {}
 
+final class CRITICAL_SECTION extends Opaque {}
+
 final class CONDITION_VARIABLE extends Opaque {}
+
+/// Critical Sections
+@Native<Void Function(Pointer<CRITICAL_SECTION>)>()
+external void InitializeCriticalSection(Pointer<CRITICAL_SECTION> lock);
+
+@Native<Void Function(Pointer<CRITICAL_SECTION>)>()
+external void DeleteCriticalSection(Pointer<CRITICAL_SECTION> lock);
+
+@Native<Void Function(Pointer<CRITICAL_SECTION>)>()
+external void EnterCriticalSection(Pointer<CRITICAL_SECTION> lock);
+
+@Native<Void Function(Pointer<CRITICAL_SECTION>)>()
+external void LeaveCriticalSection(Pointer<CRITICAL_SECTION> lock);
 
 /// SWRLocks
 
@@ -17,6 +32,9 @@ external void InitializeSRWLock(Pointer<SRWLOCK> lock);
 
 @Native<Void Function(Pointer<SRWLOCK>)>()
 external void AcquireSRWLockExclusive(Pointer<SRWLOCK> lock);
+
+@Native<Bool Function(Pointer<SRWLOCK>)>()
+external bool TryAcquireSRWLockExclusive(Pointer<SRWLOCK> lock);
 
 @Native<Void Function(Pointer<SRWLOCK>)>()
 external void ReleaseSRWLockExclusive(Pointer<SRWLOCK> mutex);

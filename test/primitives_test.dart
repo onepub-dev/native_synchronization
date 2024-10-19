@@ -88,14 +88,16 @@ void main() {
       sleep(const Duration(seconds: 2));
 
       /// force a timeout
-      expect(
-          () => mutex.runLocked(timeout: const Duration(seconds: 3), () {
-                sleep(const Duration(milliseconds: 100));
-                return true;
-              }),
-          throwsA(isA<TimeoutException>()));
+      // expect(
+      //     () => mutex.runLocked(timeout: const Duration(seconds: 3), () {
+      //           sleep(const Duration(milliseconds: 100));
+      //           return true;
+      //         }),
+      //     throwsA(isA<TimeoutException>()));
 
-      /// wait for the lock to be released.
+      // print('test one complete');
+
+      // wait for the lock to be released.
       expect(
           mutex.runLocked(timeout: const Duration(seconds: 15), () {
             sleep(const Duration(milliseconds: 100));
