@@ -10,6 +10,7 @@ import 'package:ffi/ffi.dart';
 
 import 'primitives.dart';
 import 'sendable.dart';
+import 'src/count_down.dart';
 
 final class _MailboxRepr extends Struct {
   external Pointer<Uint8> buffer;
@@ -159,15 +160,14 @@ class Mailbox {
   }
 
   Uint8List _takeTimed(Duration timeout) {
-    final start = DateTime.now();
+    final countDown = CountDown(timeout);
 
     return _mutex.runLocked(
       timeout: timeout,
       () {
         /// Wait for an item to be posted into the mailbox.
         while (_mailbox.ref.state == _stateEmpty) {
-          final remainingTime = _remainingTime(timeout, start);
-          _condVar.wait(_mutex, timeout: remainingTime);
+          _condVar.wait(_mutex, timeout: countDown.remainingTime);
         }
         // if (_mailbox.ref.state == _stateClosed) {
         //   throw StateError('Mailbox is closed');
@@ -181,14 +181,6 @@ class Mailbox {
         return result;
       },
     );
-  }
-
-  Duration _remainingTime(Duration timeout, DateTime start) {
-    var remainingTime = timeout - (DateTime.now().difference(start));
-    if (remainingTime < Duration.zero) {
-      remainingTime = Duration.zero;
-    }
-    return remainingTime;
   }
 
   Uint8List _take() => _mutex.runLocked(() {

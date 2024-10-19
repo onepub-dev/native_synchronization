@@ -172,5 +172,6 @@ Future<void> spawnLockedMutex(
     });
 
 void log(String message) {
+  // ignore: avoid_print
   print('${DateTime.now()}: $message');
 }

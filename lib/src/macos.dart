@@ -4,9 +4,11 @@
 import 'dart:ffi';
 import 'dart:io';
 
-import 'package:ffi/ffi.dart' as ffi;
-
 import 'bindings/pthread.dart';
+import 'count_down.dart';
+
+const int MACOS_ETIMEDOUT = 60;
+const int MACOS_EBUSY = 16;
 
 final DynamicLibrary pthreadLib =
     DynamicLibrary.open('/usr/lib/libSystem.B.dylib');
@@ -23,51 +25,28 @@ final PthreadMutexTrylock pthread_mutex_trylock = pthreadLib
 
 // Dart implementation of macos_pthread_mutex_timedlock using FFI
 int macos_pthread_mutex_timedlock(
-    Pointer<pthread_mutex_t> mutex, Pointer<pthread_timespec_t> absTimespec) {
-  // Allocate and initialize remaining time struct
-  final remaining = ffi.calloc<pthread_timespec_t>();
-  remaining.ref.tv_sec = absTimespec.ref.tv_sec;
-  remaining.ref.tv_nsec = absTimespec.ref.tv_nsec;
+    Pointer<pthread_mutex_t> mutex, Duration timeout) {
+  final countDown = CountDown(timeout);
+  _log('started lock, timeout: $timeout');
 
   int result;
-  final ts = ffi.calloc<pthread_timespec_t>();
-  final slept = ffi.calloc<pthread_timespec_t>();
 
-  while ((result = pthread_mutex_trylock(mutex)) == 16) {
-    // EBUSY is usually 16 on macOS
-    ts.ref.tv_sec = 0;
-    ts.ref.tv_nsec = (remaining.ref.tv_sec > 0
-        ? 10000000
-        : (remaining.ref.tv_nsec < 10000000
-            ? remaining.ref.tv_nsec
-            : 10000000));
+  while ((result = pthread_mutex_trylock(mutex)) == MACOS_EBUSY) {
+    final timeToSleep =
+        countDown.minOfRemaining(const Duration(milliseconds: 100));
+    _log(
+        '''try failed, sleeping for: $timeToSleep remaining: ${countDown.remainingTime}''');
+    sleep(timeToSleep);
 
-    // Sleep for the specified time
-    sleepTimespec(ts, slept);
+    _log('remaining lock: ${countDown.remainingTime}');
 
-    // Update remaining time
-    ts.ref.tv_nsec -= slept.ref.tv_nsec;
-    if (ts.ref.tv_nsec <= remaining.ref.tv_nsec) {
-      remaining.ref.tv_nsec -= ts.ref.tv_nsec;
-    } else {
-      remaining.ref.tv_sec--;
-      remaining.ref.tv_nsec =
-          1000000 - (ts.ref.tv_nsec - remaining.ref.tv_nsec);
-    }
-
-    if (remaining.ref.tv_sec < 0 ||
-        (remaining.ref.tv_sec == 0 && remaining.ref.tv_nsec <= 0)) {
-      ffi.calloc.free(remaining);
-      ffi.calloc.free(ts);
-      ffi.calloc.free(slept);
-      return 60; // ETIMEDOUT is usually 60 on macOS
+    if (countDown.expired) {
+      _log('returning timeoujt');
+      return MACOS_ETIMEDOUT;
     }
   }
 
-  // Free allocated memory
-  ffi.calloc.free(remaining);
-  ffi.calloc.free(ts);
-  ffi.calloc.free(slept);
+  _log('completed lock');
 
   return result;
 }
@@ -77,4 +56,9 @@ void sleepTimespec(
   sleep(Duration(seconds: ts.ref.tv_sec, microseconds: ts.ref.tv_nsec ~/ 1000));
   slept.ref.tv_sec = ts.ref.tv_sec;
   slept.ref.tv_nsec = ts.ref.tv_nsec;
+}
+
+void _log(dynamic args) {
+  // Add line back into log lock progress.
+  // print('${DateTime.now()} $args');
 }

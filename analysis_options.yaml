@@ -2,6 +2,7 @@
  include: package:lint_hard/all.yaml
  analyzer:
    errors:
+     constant_identifier_names: ignore
      sort_constructors_first: ignore
      sort_unnamed_constructors_first: ignore
 

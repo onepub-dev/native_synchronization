@@ -50,13 +50,13 @@ class _PosixMutex extends Mutex {
 
     var result = 0;
     if (Platform.isMacOS) {
-      result = macos_pthread_mutex_timedlock(_impl, timespec);
+      result = macos_pthread_mutex_timedlock(_impl, timeout);
     } else {
       result = pthread_mutex_timedlock(_impl, timespec);
     }
     malloc.free(timespec);
 
-    if (result == ETIMEDOUT) {
+    if (_isTimeout(result)) {
       throw TimeoutException('Timed out waiting for Mutex lock');
     }
     if (result != 0) {
@@ -126,7 +126,7 @@ class _PosixConditionVariable extends ConditionVariable {
 
     malloc.free(wakeUpTime);
 
-    if (result == ETIMEDOUT) {
+    if (_isTimeout(result)) {
       throw TimeoutException('Timed out waiting for conditional variable');
     }
 
@@ -139,9 +139,12 @@ class _PosixConditionVariable extends ConditionVariable {
   int get _address => _impl.address;
 }
 
-/// Create a posix timespec from a [timeout].
+bool _isTimeout(int result) =>
+    (Platform.isMacOS && result == MACOS_ETIMEDOUT) || result == ETIMEDOUT;
+
+/// Create a posix timespec from [timeout].
 /// The returned [pthread_timespec_t] must be freed by a call
-/// to [malloc.free]
+/// to [malloc].free
 Pointer<pthread_timespec_t> _allocateTimespec(Duration timeout) {
   final timespec =
       malloc.allocate<pthread_timespec_t>(sizeOf<pthread_timespec_t>());
