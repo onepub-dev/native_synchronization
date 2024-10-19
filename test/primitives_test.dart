@@ -88,12 +88,12 @@ void main() {
       sleep(const Duration(seconds: 2));
 
       /// force a timeout
-      // expect(
-      //     () => mutex.runLocked(timeout: const Duration(seconds: 3), () {
-      //           sleep(const Duration(milliseconds: 100));
-      //           return true;
-      //         }),
-      //     throwsA(isA<TimeoutException>()));
+      expect(
+          () => mutex.runLocked(timeout: const Duration(seconds: 3), () {
+                sleep(const Duration(milliseconds: 100));
+                return true;
+              }),
+          throwsA(isA<TimeoutException>()));
 
       // print('test one complete');
 

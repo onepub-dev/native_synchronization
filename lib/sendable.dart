@@ -2,7 +2,7 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-abstract final class Sendable<T> {
+abstract  class Sendable<T> {
   static Sendable<T> wrap<T, U>(T Function(U) make, U data) =>
       _SendableImpl._(make, data);
 

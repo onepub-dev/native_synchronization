@@ -81,11 +81,7 @@ sealed class Mutex implements Finalizable {
     }
   }
 
-  Sendable<Mutex> get asSendable => Sendable.wrap(
-      Platform.isWindows ? _WindowsMutex.fromAddress : _PosixMutex.fromAddress,
-      _address);
-
-  int get _address;
+  Sendable<Mutex> get asSendable;
 }
 
 /// A *condition variable* synchronization primitive.
@@ -119,11 +115,11 @@ sealed class ConditionVariable implements Finalizable {
   /// Wake up at least one thread waiting on this condition variable.
   void notify();
 
-  Sendable<ConditionVariable> get asSendable => Sendable.wrap(
-      Platform.isWindows
-          ? _WindowsConditionVariable.fromAddress
-          : _PosixConditionVariable.fromAddress,
-      _address);
+  Sendable<ConditionVariable> get asSendable;
 
-  int get _address;
+  // => Sendable.wrap(
+  //     Platform.isWindows
+  //         ? _WindowsConditionVariable.fromAddress
+  //         : _PosixConditionVariable.fromAddress,
+  //     _address);
 }

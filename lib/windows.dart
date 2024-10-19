@@ -29,6 +29,7 @@ class _WindowsMutex extends Mutex {
   static const _sizeInBytes = 8; // `sizeof(SRWLOCK)`
 
   final Pointer<SRWLOCK> _impl;
+  final ConditionVariable _conditionVariable;
 
   static final _finalizer = Finalizer<Pointer<SRWLOCK>>((ptr) {
     malloc.free(ptr);
@@ -36,40 +37,63 @@ class _WindowsMutex extends Mutex {
 
   _WindowsMutex()
       : _impl = malloc.allocate(_WindowsMutex._sizeInBytes),
+        _conditionVariable = _WindowsConditionVariable(),
         super._() {
     _initGetLastError();
     InitializeSRWLock(_impl);
     _finalizer.attach(this, _impl);
   }
 
-  _WindowsMutex.fromAddress(int address)
-      : _impl = Pointer.fromAddress(address),
+  _WindowsMutex.fromAddress(int mutexAddress, this._conditionVariable)
+      : _impl = Pointer.fromAddress(mutexAddress),
         super._();
 
   @override
   void _lock({Duration? timeout}) {
-    _log('taking lock');
+    _log('taking lock ${_impl.address}');
 
     if (timeout != null) {
       if (!TryAcquireSRWLockExclusive(_impl)) {
-        _log('Failed to acquire lock will wait');
-        // we didn't get the lock so sleep on it.
-        _WindowsConditionVariable().wait(this, timeout: timeout);
-        _log('wait returned');
+        _log('Failed to acquire lock, will wait ${_impl.address}');
+
+        // Didn't get the lock immediately, so wait on the condition variable
+        _conditionVariable.wait(this, timeout: timeout);
+        _log('wait returned ${_impl.address}');
       }
     } else {
       AcquireSRWLockExclusive(_impl);
     }
+    _log('lock acquired ${_impl.address}');
   }
 
   @override
   void _unlock() {
-    _log('releasing lock');
+    _log('releasing lock  ${_impl.address}');
+
+    // Signal the condition variable to wake up any waiting threads
+    _conditionVariable.notify();
+
+    // Release the SRW lock
     ReleaseSRWLockExclusive(_impl);
+    _log('lock released ${_impl.address}');
   }
 
   @override
-  int get _address => _impl.address;
+  Sendable<Mutex> get asSendable =>
+      _SendableWindowsMutex(_impl.address, _conditionVariable);
+}
+
+class _SendableWindowsMutex implements Sendable<Mutex> {
+  _SendableWindowsMutex(this.mutexAddress, ConditionVariable conditionVariable)
+      : conditionVariableAddress = conditionVariable.asSendable;
+  int mutexAddress;
+  Sendable<ConditionVariable> conditionVariableAddress;
+
+  @override
+  Mutex materialize() {
+    final conditionalVariable = conditionVariableAddress.materialize();
+    return _WindowsMutex.fromAddress(mutexAddress, conditionalVariable);
+  }
 }
 
 class _WindowsConditionVariable extends ConditionVariable {
@@ -95,6 +119,7 @@ class _WindowsConditionVariable extends ConditionVariable {
 
   @override
   void notify() {
+    _log('Notifying condition variable ${_impl.address}');
     WakeConditionVariable(_impl);
   }
 
@@ -103,29 +128,20 @@ class _WindowsConditionVariable extends ConditionVariable {
   void wait(covariant _WindowsMutex mutex, {Duration? timeout}) {
     const infinite = 0xFFFFFFFF;
     const exclusive = 0;
-    _log('waiting for lock $timeout');
+    _log('waiting for lock with timeout: $timeout  ${_impl.address}');
 
     var result = 0;
-    try {
-      print('timeout ms ${timeout!.inMilliseconds}');
-      result = SleepConditionVariableSRW(
-          _impl,
-          mutex._impl,
-          timeout == null ? infinite : 9000,
+    final timeoutMs = timeout?.inMilliseconds ?? infinite;
 
-          //  timeout.inMilliseconds,
+    result =
+        SleepConditionVariableSRW(_impl, mutex._impl, timeoutMs, exclusive);
 
-          exclusive);
-    } catch (e) {
-      print(e);
-    }
-
-    _log('waiting returned with $result');
+    _log('wait returned with result: $result  ${_impl.address}');
     if (result == 0) {
       final error = GetLastError();
       if (error == ERROR_TIMEOUT) {
-        _log('throwing timeout from wait');
-        throw TimeoutException('Timeout waiting for conditional variable');
+        _log('throwing timeout from wait ${_impl.address}');
+        throw TimeoutException('Timeout waiting for condition variable');
       } else {
         throw StateError(
             'Failed to wait on a condition variable; Error $error');
@@ -134,10 +150,20 @@ class _WindowsConditionVariable extends ConditionVariable {
   }
 
   @override
-  int get _address => _impl.address;
+  Sendable<ConditionVariable> get asSendable =>
+      _SendableWindowsConditionVariable(_impl.address);
+}
+
+class _SendableWindowsConditionVariable implements Sendable<ConditionVariable> {
+  _SendableWindowsConditionVariable(this.conditionVariableAddress);
+  int conditionVariableAddress;
+
+  @override
+  ConditionVariable materialize() =>
+      _WindowsConditionVariable.fromAddress(conditionVariableAddress);
 }
 
 void _log(dynamic args) {
-  // Add line back into log lock progress.
+  // This could be replaced with a proper logging mechanism for production
   print('${DateTime.now()} $args');
 }

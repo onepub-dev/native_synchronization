@@ -72,7 +72,15 @@ class _PosixMutex extends Mutex {
   }
 
   @override
-  int get _address => _impl.address;
+  Sendable<Mutex> get asSendable => _SendablePosixMutex(_impl.address);
+}
+
+class _SendablePosixMutex implements Sendable<Mutex> {
+  _SendablePosixMutex(this.mutexAddress);
+  int mutexAddress;
+
+  @override
+  Mutex materialize() => _PosixMutex.fromAddress(mutexAddress);
 }
 
 class _PosixConditionVariable extends ConditionVariable {
@@ -136,7 +144,17 @@ class _PosixConditionVariable extends ConditionVariable {
   }
 
   @override
-  int get _address => _impl.address;
+  Sendable<ConditionVariable> get asSendable =>
+      _SendablePosixConditionVariable(_impl.address);
+}
+
+class _SendablePosixConditionVariable implements Sendable<ConditionVariable> {
+  _SendablePosixConditionVariable(this.conditionVariableAddress);
+  int conditionVariableAddress;
+
+  @override
+  ConditionVariable materialize() =>
+      _PosixConditionVariable.fromAddress(conditionVariableAddress);
 }
 
 bool _isTimeout(int result) =>
