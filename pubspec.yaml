@@ -1,4 +1,4 @@
-version: 0.6.0
+version: 0.7.0
 name: native_synchronization_temp
 description: Low level synchronization primitives built on dart:ffi.
 

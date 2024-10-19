@@ -1,3 +1,7 @@
+# 0.7.0
+- added windodws support to take with a timeout.
+- fixed macos support for take with a timeout.
+
 # 0.6.0
 - Added method to the public API to determine the mailboxes state. 
 - removed the test in _takeTimed for a closed mailbox as a work around for https://github.com/dart-lang/sdk/issues/56412
