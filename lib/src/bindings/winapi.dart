@@ -52,5 +52,8 @@ external int SleepConditionVariableSRW(Pointer<CONDITION_VARIABLE> condVar,
 @Native<Void Function(Pointer<CONDITION_VARIABLE>)>()
 external void WakeConditionVariable(Pointer<CONDITION_VARIABLE> condVar);
 
+@Native<Void Function(Pointer<CONDITION_VARIABLE>)>()
+external void WakeAllConditionVariable(Pointer<CONDITION_VARIABLE> condVar);
+
 @Native<Long Function()>()
 external int GetLastError();

@@ -151,7 +151,7 @@ class Mailbox {
 
         _mailbox.ref.open = _stateClosed;
 
-        _condVar.notify();
+        _condVar.notifyAll();
       });
 
   /// Take a message from the mailbox.
@@ -163,10 +163,12 @@ class Mailbox {
   /// If not [timeout] is provided then this method will block
   /// indefinitely.
   ///
-  /// If [timeout] is provided then this will block for at most [timeout].
+  /// If [timeout] is provided then this limits the wait for a message.
+  /// Reacquiring the mutex after a condition wait can exceed this duration.
   /// If the timeout expires before a message is available then this will
   /// throw a [TimeoutException].
-  /// The [timeout] supports a resolution of microseconds.
+  /// Windows condition waits round up to milliseconds; POSIX supports
+  /// microseconds.
   Uint8List take({Duration? timeout}) {
     if (timeout != null) {
       return _takeTimed(timeout);

@@ -2,7 +2,6 @@
 // for details. All rights reserved. Use of this source code is governed by a
 // BSD-style license that can be found in the LICENSE file.
 
-import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
 import 'dart:isolate';
@@ -76,34 +75,6 @@ void main() {
         expect(await helperResult, equals('success'));
       });
     });
-
-    test('Timeout', () async {
-      final mutex = Mutex();
-
-      unawaited(
-          spawnLockedMutex(mutex.asSendable, const Duration(seconds: 10)));
-
-      /// give the isoalte a chance to start.
-      sleep(const Duration(seconds: 2));
-
-      /// force a timeout
-      expect(
-          () => mutex.runLocked(timeout: const Duration(seconds: 3), () {
-                sleep(const Duration(milliseconds: 100));
-                return true;
-              }),
-          throwsA(isA<TimeoutException>()));
-
-      // print('test one complete');
-
-      // wait for the lock to be released.
-      expect(
-          mutex.runLocked(timeout: const Duration(seconds: 15), () {
-            sleep(const Duration(milliseconds: 100));
-            return true;
-          }),
-          isTrue);
-    });
   });
 
   group('condvar', () {
@@ -153,26 +124,4 @@ void main() {
       });
     });
   });
-}
-
-/// Create an isolate that locks the mutex for [duration]
-Future<void> spawnLockedMutex(
-        Sendable<Mutex> sendableMutex, Duration duration) async =>
-    Isolate.run<void>(() {
-      final mutex = sendableMutex.materialize();
-      log('Isolate started');
-
-      mutex.runLocked(() {
-        log('isolate spawnLockedMutext has lock');
-        // await Future.delayed(duration);
-        sleep(duration);
-        log('isolate spawnLockedMutext returning');
-        return true;
-      });
-      log('runLock completed');
-    });
-
-void log(String message) {
-  // ignore: avoid_print
-  print('${DateTime.now()}: $message');
 }

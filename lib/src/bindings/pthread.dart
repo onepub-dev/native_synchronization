@@ -66,3 +66,7 @@ external int pthread_cond_destroy(Pointer<pthread_cond_t> cond);
 /// cond_signal
 @Native<Int Function(Pointer<pthread_cond_t>)>()
 external int pthread_cond_signal(Pointer<pthread_cond_t> cond);
+
+/// cond_broadcast
+@Native<Int Function(Pointer<pthread_cond_t>)>()
+external int pthread_cond_broadcast(Pointer<pthread_cond_t> cond);

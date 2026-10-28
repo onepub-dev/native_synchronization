@@ -117,6 +117,13 @@ class _PosixConditionVariable extends ConditionVariable {
   }
 
   @override
+  void notifyAll() {
+    if (pthread_cond_broadcast(_impl) != 0) {
+      throw StateError('Failed to broadcast condition variable');
+    }
+  }
+
+  @override
   void wait(covariant _PosixMutex mutex, {Duration? timeout}) {
     if (timeout == null) {
       if (pthread_cond_wait(_impl, mutex._impl) != 0) {

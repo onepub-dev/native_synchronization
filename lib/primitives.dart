@@ -25,6 +25,7 @@ import 'package:ffi/ffi.dart';
 import 'sendable.dart';
 import 'src/bindings/pthread.dart';
 import 'src/bindings/winapi.dart';
+import 'src/count_down.dart';
 import 'src/logger.dart';
 import 'src/macos.dart';
 
@@ -102,19 +103,25 @@ sealed class ConditionVariable implements Finalizable {
       ? _WindowsConditionVariable()
       : _PosixConditionVariable();
 
-  /// Block and wait until another thread calls [notify].
+  /// Block and wait until another thread calls [notify] or [notifyAll].
   ///
   /// `mutex` must be a [Mutex] object exclusively held by the current thread.
   /// It will be released and the thread will block until another thread
-  /// calls [notify].
+  /// calls [notify] or [notifyAll]. Spurious wakes are possible, so callers
+  /// must check their condition in a loop while holding the mutex.
   ///
   /// if a [timeout] is passed and it expires
   /// then a [TimeoutException] is thrown.
-  /// Timeout resolution to microseconds is supported.
+  /// The mutex is reacquired before returning or throwing [TimeoutException].
+  /// Reacquiring it can extend the wait beyond [timeout]. Windows rounds
+  /// positive timeouts up to milliseconds; POSIX supports microseconds.
   void wait(Mutex mutex, {Duration? timeout});
 
   /// Wake up at least one thread waiting on this condition variable.
   void notify();
+
+  /// Wake up all threads waiting on this condition variable.
+  void notifyAll();
 
   Sendable<ConditionVariable> get asSendable;
 
