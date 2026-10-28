@@ -1,8 +1,8 @@
-version: 0.8.0
+version: 0.8.1
 name: native_synchronization_temp
 description: Low level synchronization primitives built on dart:ffi.
 
-repository: https://github.com/dart-lang/native_synchronization
+repository: https://github.com/onepub-dev/native_synchronization
 
 environment:
   sdk: ">=3.0.0 <4.0.0"

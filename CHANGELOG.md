@@ -1,3 +1,9 @@
+# 0.8.1
+
+- Fix Windows timed mutex acquisition under contention so a callback only runs after acquiring the lock.
+- Wake every waiting consumer when a mailbox closes.
+- Bound Windows condition-variable timeouts without converting a finite wait into an infinite wait.
+
 # 0.8.0
 - Added asserts to check for memory corruption.
 - Split the state of the mailbox to track open/closed full/empty separately.
