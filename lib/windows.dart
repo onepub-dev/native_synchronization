@@ -51,24 +51,31 @@ class _WindowsMutex extends Mutex {
     log(() => 'taking lock ${_impl.address}');
 
     if (timeout != null) {
-      final countDown = CountDown(timeout);
-      // A condition-variable wait requires ownership of the SRW lock. Retry
-      // acquisition instead, and only return after actually acquiring it.
-      var acquired = TryAcquireSRWLockExclusive(_impl);
-      while (!acquired) {
-        if (countDown.expired) {
-          throw TimeoutException('Timed out waiting for Mutex lock');
-        }
-        sleep(countDown.minOfRemaining(const Duration(milliseconds: 1)));
-        if (countDown.expired) {
-          throw TimeoutException('Timed out waiting for Mutex lock');
-        }
-        acquired = TryAcquireSRWLockExclusive(_impl);
-      }
+      _lockWithTimeout(timeout);
     } else {
       AcquireSRWLockExclusive(_impl);
     }
     log(() => 'lock acquired ${_impl.address}');
+  }
+
+  // Private callback lets regression tests observe an actual failed native
+  // acquisition before allowing the current owner to release the mutex.
+  void _lockWithTimeout(Duration timeout, {void Function()? onFailedAttempt}) {
+    final countDown = CountDown(timeout);
+    // A condition-variable wait requires ownership of the SRW lock. Retry
+    // acquisition instead, and only return after actually acquiring it.
+    var acquired = TryAcquireSRWLockExclusive(_impl);
+    while (!acquired) {
+      onFailedAttempt?.call();
+      if (countDown.expired) {
+        throw TimeoutException('Timed out waiting for Mutex lock');
+      }
+      sleep(countDown.minOfRemaining(const Duration(milliseconds: 1)));
+      if (countDown.expired) {
+        throw TimeoutException('Timed out waiting for Mutex lock');
+      }
+      acquired = TryAcquireSRWLockExclusive(_impl);
+    }
   }
 
   @override
@@ -129,40 +136,41 @@ class _WindowsConditionVariable extends ConditionVariable {
   static const ERROR_TIMEOUT = 0x5b4;
   @override
   void wait(covariant _WindowsMutex mutex, {Duration? timeout}) {
-    const infinite = 0xFFFFFFFF;
-    const maxFinite = infinite - 1;
+    _waitWithTimeout(mutex, timeout);
+  }
+
+  // A private chunk limit allows testing a chunk boundary without a 49-day
+  // native wait. The public wait always uses the full finite DWORD range.
+  void _waitWithTimeout(_WindowsMutex mutex, Duration? timeout,
+      {int maxWaitMilliseconds = windowsMaxFiniteTimeout}) {
     const exclusive = 0;
     log(() => 'waiting for lock with timeout: $timeout  ${_impl.address}');
 
     final countDown = timeout == null ? null : CountDown(timeout);
-    while (true) {
-      final remaining = countDown?.remainingTime;
-      // Round finite waits up to milliseconds and split very long waits so
-      // they cannot wrap a DWORD or become the INFINITE sentinel.
-      final int timeoutMs;
-      if (remaining == null) {
-        timeoutMs = infinite;
-      } else if (remaining.inMilliseconds >= maxFinite) {
-        timeoutMs = maxFinite;
-      } else {
-        timeoutMs = (remaining.inMicroseconds + 999) ~/ 1000;
-      }
-      final result =
-          SleepConditionVariableSRW(_impl, mutex._impl, timeoutMs, exclusive);
-      if (result != 0) {
+    final remaining = countDown?.remainingTime;
+    // Round finite waits up to milliseconds and split very long waits so
+    // they cannot wrap a DWORD or become the INFINITE sentinel.
+    final converted = windowsTimeoutMilliseconds(remaining);
+    final timeoutMs = remaining != null && converted > maxWaitMilliseconds
+        ? maxWaitMilliseconds
+        : converted;
+    final result =
+        SleepConditionVariableSRW(_impl, mutex._impl, timeoutMs, exclusive);
+    if (result != 0) {
+      return;
+    }
+    // Capture before logging or another native call can replace last error.
+    final error = GetLastError();
+    if (error == ERROR_TIMEOUT) {
+      if (countDown != null && !countDown.expired) {
+        // The native wait has reacquired the mutex. A predicate may have
+        // changed while reacquiring it, with its notification already gone.
+        // Return a spurious wake so the caller checks that predicate.
         return;
       }
-      // Capture before logging or another native call can replace last error.
-      final error = GetLastError();
-      if (error == ERROR_TIMEOUT) {
-        if (countDown != null && !countDown.expired) {
-          continue;
-        }
-        throw TimeoutException('Timeout waiting for condition variable');
-      } else {
-        throw StateError(
-            'Failed to wait on a condition variable; Error $error');
-      }
+      throw TimeoutException('Timeout waiting for condition variable');
+    } else {
+      throw StateError('Failed to wait on a condition variable; Error $error');
     }
   }
 

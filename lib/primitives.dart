@@ -28,6 +28,7 @@ import 'src/bindings/winapi.dart';
 import 'src/count_down.dart';
 import 'src/logger.dart';
 import 'src/macos.dart';
+import 'src/windows_timeout.dart';
 
 part 'posix.dart';
 part 'windows.dart';
